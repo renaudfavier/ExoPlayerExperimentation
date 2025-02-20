@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -34,40 +35,50 @@ import androidx.media3.common.Player
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.ui.PlayerView
 import com.deezer.exoapplication.player.domain.model.TrackId
+import com.deezer.exoapplication.player.presentation.model.PlayerScreenUiModel
 import com.deezer.exoapplication.player.presentation.model.TrackUiModel
 import com.deezer.exoapplication.ui.theme.ExoAppTheme
-import java.util.UUID
-
+import com.google.common.collect.ImmutableList
 
 @OptIn(UnstableApi::class)
 @Composable
 fun PlayerScreen(
-    player: Player?,
-    tracks: List<TrackUiModel>,
+    uiModel: PlayerScreenUiModel,
+    onPause: () -> Unit,
+    onResume: () -> Unit,
     onTrackSelected: (TrackId) -> Unit,
     onTrackRemoved: (TrackId) -> Unit,
     onAddTrack: () -> Unit,
     modifier: Modifier = Modifier
 ) = Column(modifier) {
-    AndroidView(
-        factory = { context ->
-            PlayerView(context).also { playerView ->
-                playerView.player = player
-                playerView.useController = true
-                playerView.controllerShowTimeoutMs = -1
+
+    Row(
+        modifier = Modifier.fillMaxWidth().height(40.dp),
+        horizontalArrangement = Arrangement.Center
+    ) {
+        if(uiModel.isPlaying) {
+            Button(
+                onClick = onPause,
+                enabled = uiModel.isPlayButtonEnabled
+            ) {
+                Text("Pause")
             }
-        },
-        modifier = Modifier
-            .fillMaxWidth()
-            .fillMaxHeight(0.4f)
-    )
+        } else {
+            Button(
+                onClick = onResume,
+                enabled = uiModel.isPlayButtonEnabled
+            ) {
+                Text("Play")
+            }
+        }
+    }
     
     Box(modifier = Modifier
         .fillMaxWidth()
         .weight(1f)
     ) {
         Playlist(
-            tracks = tracks,
+            tracks = uiModel.tracks,
             onTrackSelected = onTrackSelected,
             onTrackRemove = onTrackRemoved,
             modifier = Modifier.fillMaxSize()
@@ -86,7 +97,6 @@ fun PlayerScreen(
         }
     }
 }
-
 
 @Composable
 fun Playlist(
@@ -142,24 +152,28 @@ fun Track(
             contentDescription = "Clear",
         )
     }
-
 }
 
 @Preview
 @Composable
 private fun PlayerScreenPreview() {
 
-    val fakeTracks = listOf(
-        TrackUiModel(UUID.randomUUID(), "Track 1", false),
-        TrackUiModel(UUID.randomUUID(), "Track 2", false),
-        TrackUiModel(UUID.randomUUID(), "Track 3", true),
-        TrackUiModel(UUID.randomUUID(), "Track 4", false),
+    val fakeTracks = ImmutableList.of(
+        TrackUiModel("", "Track 1", false),
+        TrackUiModel("", "Track 2", false),
+        TrackUiModel("", "Track 3", true),
+        TrackUiModel("", "Track 4", false),
     )
 
     ExoAppTheme {
         PlayerScreen(
-            player = null,
-            tracks = fakeTracks,
+            uiModel = PlayerScreenUiModel(
+                isPlayButtonEnabled = false,
+                isPlaying = false,
+                tracks = fakeTracks
+            ),
+            onPause = {},
+            onResume = {},
             onTrackRemoved = {},
             onTrackSelected = {},
             onAddTrack = {},

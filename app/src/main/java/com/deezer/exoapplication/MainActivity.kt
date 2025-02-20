@@ -1,5 +1,8 @@
 package com.deezer.exoapplication
 
+import android.Manifest.permission.POST_NOTIFICATIONS
+import android.content.Intent
+import android.os.Build
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -11,24 +14,34 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Scaffold
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
+import androidx.core.app.ActivityCompat
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.media3.common.Player
 import com.deezer.exoapplication.player.presentation.PlayerScreen
 import com.deezer.exoapplication.player.presentation.PlayerViewModel
 import com.deezer.exoapplication.ui.theme.ExoAppTheme
 import dagger.hilt.android.AndroidEntryPoint
+import javax.inject.Inject
 
 @AndroidEntryPoint
 class MainActivity : ComponentActivity() {
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            ActivityCompat.requestPermissions(this, arrayOf(POST_NOTIFICATIONS), 0)
+        }
+        startServiceIfNeeded()
+
         enableEdgeToEdge()
         setContent {
             ExoAppTheme {
                 Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
 
                     val viewModel = hiltViewModel<PlayerViewModel>()
-                    val tracks by viewModel.uiState.collectAsStateWithLifecycle()
+                    val uiModel by viewModel.uiState.collectAsStateWithLifecycle()
 
                     val singleAudioFilePickerLauncher = rememberLauncherForActivityResult(
                         contract = ActivityResultContracts.GetContent(),
@@ -37,10 +50,11 @@ class MainActivity : ComponentActivity() {
                     }
 
                     PlayerScreen(
-                        player = viewModel.player,
-                        tracks = tracks,
-                        onTrackSelected = { id -> viewModel.onTrackSelected(id) },
-                        onTrackRemoved = { id -> viewModel.onTrackRemoved(id) },
+                        uiModel = uiModel,
+                        onPause = viewModel::onPause,
+                        onResume = viewModel::onResume,
+                        onTrackSelected = viewModel::onTrackSelected,
+                        onTrackRemoved = viewModel::onTrackRemoved,
                         onAddTrack = {
                             singleAudioFilePickerLauncher.launch(input = "audio/*")
                         },
@@ -51,5 +65,13 @@ class MainActivity : ComponentActivity() {
                 }
             }
         }
+    }
+
+    private fun startServiceIfNeeded() {
+        if(MyMediaPlaybackService.isServiceRunning) return
+        
+        val intent = Intent(applicationContext, MyMediaPlaybackService::class.java)
+        intent.action = MyMediaPlaybackService.Action.START.toString()
+        startService(intent)
     }
 }
